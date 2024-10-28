@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">StepCounter</string>
-    <string name="StartCountingButtonLabel">Bắt đầu đếm bước chân</string>
+    <string name="StartCountingButtonLabel">Bắt đầu</string>
     <string name="StepCountTextLabel">Bước chân:</string>
     <string name="InitialCountValue">0</string>
-    <string name="StopCountingButtonLabel">Dừng đếm bước chân</string>
+    <string name="StopCountingButtonLabel">Dừng</string>
 </resources>

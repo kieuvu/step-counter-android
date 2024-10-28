@@ -1,92 +1,79 @@
 package com.vukm.StepCounter;
 
-import android.Manifest;
-import android.content.Context;
-import android.content.pm.PackageManager;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
-import android.widget.Button;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.view.MenuItem;
+import android.view.Window;
 
-import androidx.annotation.RequiresApi;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
+import androidx.appcompat.app.AppCompatDelegate;
+import androidx.fragment.app.Fragment;
 
-public class MainActivity extends AppCompatActivity implements SensorEventListener {
-    private SensorManager sensorManager;
-    private Sensor stepCounterSensor;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.navigation.NavigationBarView;
+import com.vukm.StepCounter.ui.counting.CountingTabFragment;
+import com.vukm.StepCounter.ui.summary.SummaryTabFragment;
 
-    private TextView stepCountView;
-    private Button toggleButtonView;
+import org.jetbrains.annotations.Contract;
 
-    private boolean isCounting = false;
-    private int stepCount = 0;
+public class MainActivity extends AppCompatActivity {
+    private Fragment countingTabFragment;
+    private Fragment summaryTabFragment;
+    private Fragment activeFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+
+        Window window = this.getWindow();
+        window.setStatusBarColor(getResources().getColor(R.color.black, this.getTheme()));
+
         setContentView(R.layout.activity_main);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            this.requestActivityPermission();
-        }
+        countingTabFragment = new CountingTabFragment();
+        summaryTabFragment = new SummaryTabFragment();
+        activeFragment = countingTabFragment;
 
-        this.stepCountView = findViewById(R.id.stepNumberTextView);
-        this.toggleButtonView = findViewById(R.id.toggleCountingButton);
+        getSupportFragmentManager()
+                .beginTransaction()
+                .add(R.id.fragment_container, summaryTabFragment, "SUMMARY")
+                .hide(summaryTabFragment)
+                .commit();
 
-        this.sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        if (this.sensorManager != null) {
-            this.stepCounterSensor = this.sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR);
-            if (this.stepCounterSensor != null) {
-                Toast.makeText(this, "Step Counter connected successfully!", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(this, "Step Counter connected failed!", Toast.LENGTH_SHORT).show();
+        getSupportFragmentManager()
+                .beginTransaction()
+                .add(R.id.fragment_container, countingTabFragment, "COUNTING")
+                .commit();
+
+        BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
+        bottomNavigationView.setOnItemSelectedListener(this.onItemSelectedListener());
+    }
+
+    private void showFragment(Fragment fragment) {
+        if (fragment == activeFragment) return;
+
+        getSupportFragmentManager().beginTransaction()
+                .hide(activeFragment)
+                .show(fragment)
+                .commit();
+
+        activeFragment = fragment;
+    }
+
+    @NonNull
+    @Contract(pure = true)
+    private NavigationBarView.OnItemSelectedListener onItemSelectedListener() {
+        return (MenuItem item) -> {
+            if (item.getItemId() == R.id.nav_tracking) {
+               this.showFragment(countingTabFragment);
+            } else if (item.getItemId() == R.id.nav_summary) {
+                this.showFragment(summaryTabFragment);
             }
-        }
-
-        this.toggleButtonView.setOnClickListener(v -> {
-            this.isCounting = !this.isCounting;
-            if (this.isCounting) {
-                Toast.makeText(this, "Started counting", Toast.LENGTH_SHORT).show();
-                Log.d("Vukm", "Started counting");
-                this.toggleButtonView.setText(R.string.StopCountingButtonLabel);
-                this.stepCount = 0;
-                this.sensorManager.registerListener(this, this.stepCounterSensor, SensorManager.SENSOR_DELAY_FASTEST);
-            } else {
-                Toast.makeText(this, "Stopped counting", Toast.LENGTH_SHORT).show();
-                Log.d("Vukm", "Stopped counting");
-                this.toggleButtonView.setText(R.string.StartCountingButtonLabel);
-                this.sensorManager.unregisterListener(this);
-            }
-        });
-    }
-
-    @Override
-    public void onSensorChanged(SensorEvent event) {
-        Log.d("Vukm", "Handling sensor event");
-
-        if (this.isCounting && event.sensor.getType() == Sensor.TYPE_STEP_DETECTOR) {
-            Log.d("Vukm", "Increasing counter");
-            this.stepCount++;
-            this.stepCountView.setText(String.valueOf(this.stepCount));
-        }
-    }
-
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int i) {
-    }
-
-    @RequiresApi(api = Build.VERSION_CODES.Q)
-    private void requestActivityPermission() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACTIVITY_RECOGNITION}, 1);
-        }
+            return true;
+        };
     }
 }
+
