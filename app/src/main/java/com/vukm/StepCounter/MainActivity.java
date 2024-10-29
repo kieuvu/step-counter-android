@@ -1,6 +1,5 @@
 package com.vukm.StepCounter;
 
-import android.os.Build;
 import android.os.Bundle;
 import android.view.MenuItem;
 import android.view.Window;

@@ -56,15 +56,18 @@ public class CountingTabFragment extends Fragment implements SensorEventListener
         this.toggleButtonView = view.findViewById(R.id.toggleCountingButton);
 
         this.sensorManager = (SensorManager) requireActivity().getSystemService(Context.SENSOR_SERVICE);
-        if (this.sensorManager != null) {
-            this.stepCounterSensor = this.sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
-            if (this.stepCounterSensor != null) {
-                Toast.makeText(requireContext(), "Step Counter connected successfully!", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(requireContext(), "Step Counter connected failed!", Toast.LENGTH_SHORT).show();
-            }
+        if (this.sensorManager == null) {
+            Toast.makeText(requireContext(), "Can't get sensor services!", Toast.LENGTH_SHORT).show();
+            return;
         }
 
+        this.stepCounterSensor = this.sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
+        if (this.stepCounterSensor == null) {
+            Toast.makeText(requireContext(), "Step Counter connected failed!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Toast.makeText(requireContext(), "Step Counter connected successfully!", Toast.LENGTH_SHORT).show();
         this.toggleButtonView.setOnClickListener(v -> this.changeCountStatus(!this.isCounting));
     }
 
@@ -102,16 +105,22 @@ public class CountingTabFragment extends Fragment implements SensorEventListener
     @Override
     public void onSensorChanged(SensorEvent event) {
         if (this.isCounting && event.sensor.getType() == Sensor.TYPE_STEP_COUNTER) {
+            int latestCount =  (int) event.values[0];
             if (this.initialStepCount < 0) {
-                this.initialStepCount = (int) event.values[0];
+                this.initialStepCount = latestCount + 1;
             }
-            this.stepCount = (int) event.values[0] - initialStepCount;
+            this.stepCount = latestCount - initialStepCount;
             this.stepCountView.setText(String.valueOf(stepCount));
         }
     }
 
     @Override
-    public void onAccuracyChanged(@NonNull Sensor sensor, int accuracy) {
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        if (sensor.getType() != Sensor.TYPE_STEP_COUNTER) {
+            return;
+        }
+        String message = "Step Counter accuracy changed: " + accuracy;
+        Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
     }
 
     @Override
