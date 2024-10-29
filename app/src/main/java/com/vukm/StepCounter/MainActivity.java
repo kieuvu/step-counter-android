@@ -28,38 +28,40 @@ public class MainActivity extends AppCompatActivity {
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
 
         Window window = this.getWindow();
-        window.setStatusBarColor(getResources().getColor(R.color.black, this.getTheme()));
+        window.setStatusBarColor(this.getResources().getColor(R.color.black, this.getTheme()));
 
         setContentView(R.layout.activity_main);
 
-        countingTabFragment = new CountingTabFragment();
-        summaryTabFragment = new SummaryTabFragment();
-        activeFragment = countingTabFragment;
+        this.countingTabFragment = new CountingTabFragment();
+        this.summaryTabFragment = new SummaryTabFragment();
+        this.activeFragment = this.countingTabFragment;
 
-        getSupportFragmentManager()
+        this.getSupportFragmentManager()
                 .beginTransaction()
-                .add(R.id.fragment_container, summaryTabFragment, "SUMMARY")
-                .hide(summaryTabFragment)
+                .add(R.id.fragment_container, this.summaryTabFragment, "SUMMARY")
+                .hide(this.summaryTabFragment)
                 .commit();
 
-        getSupportFragmentManager()
+        this.getSupportFragmentManager()
                 .beginTransaction()
-                .add(R.id.fragment_container, countingTabFragment, "COUNTING")
+                .add(R.id.fragment_container, this.countingTabFragment, "COUNTING")
                 .commit();
 
-        BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
+        BottomNavigationView bottomNavigationView = this.findViewById(R.id.bottom_navigation);
         bottomNavigationView.setOnItemSelectedListener(this.onItemSelectedListener());
     }
 
     private void showFragment(Fragment fragment) {
-        if (fragment == activeFragment) return;
+        if (fragment == this.activeFragment) {
+            return;
+        } ;
 
-        getSupportFragmentManager().beginTransaction()
-                .hide(activeFragment)
+        this.getSupportFragmentManager().beginTransaction()
+                .hide(this.activeFragment)
                 .show(fragment)
                 .commit();
 
-        activeFragment = fragment;
+        this.activeFragment = fragment;
     }
 
     @NonNull
@@ -67,9 +69,9 @@ public class MainActivity extends AppCompatActivity {
     private NavigationBarView.OnItemSelectedListener onItemSelectedListener() {
         return (MenuItem item) -> {
             if (item.getItemId() == R.id.nav_tracking) {
-               this.showFragment(countingTabFragment);
+                this.showFragment(this.countingTabFragment);
             } else if (item.getItemId() == R.id.nav_summary) {
-                this.showFragment(summaryTabFragment);
+                this.showFragment(this.summaryTabFragment);
             }
             return true;
         };

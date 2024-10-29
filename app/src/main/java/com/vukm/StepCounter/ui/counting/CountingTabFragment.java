@@ -55,33 +55,33 @@ public class CountingTabFragment extends Fragment implements SensorEventListener
         this.stepCountView = view.findViewById(R.id.stepNumberTextView);
         this.toggleButtonView = view.findViewById(R.id.toggleCountingButton);
 
-        this.sensorManager = (SensorManager) requireActivity().getSystemService(Context.SENSOR_SERVICE);
+        this.sensorManager = (SensorManager) this.requireActivity().getSystemService(Context.SENSOR_SERVICE);
         if (this.sensorManager == null) {
-            Toast.makeText(requireContext(), "Can't get sensor services!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this.requireContext(), "Can't get sensor services!", Toast.LENGTH_SHORT).show();
             return;
         }
 
         this.stepCounterSensor = this.sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
         if (this.stepCounterSensor == null) {
-            Toast.makeText(requireContext(), "Step Counter connected failed!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this.requireContext(), "Step Counter connected failed!", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        Toast.makeText(requireContext(), "Step Counter connected successfully!", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this.requireContext(), "Step Counter connected successfully!", Toast.LENGTH_SHORT).show();
         this.toggleButtonView.setOnClickListener(v -> this.changeCountStatus(!this.isCounting));
     }
 
     @RequiresApi(api = Build.VERSION_CODES.Q)
     private void requestActivityPermission() {
-        if (getContext() == null) {
+        if (this.getContext() == null) {
             return;
         }
 
         String permission = Manifest.permission.ACTIVITY_RECOGNITION;
         int permissionGranted = PackageManager.PERMISSION_GRANTED;
 
-        if (ContextCompat.checkSelfPermission(getContext(), permission) != permissionGranted) {
-            ActivityCompat.requestPermissions(requireActivity(), new String[]{permission}, 1);
+        if (ContextCompat.checkSelfPermission(this.getContext(), permission) != permissionGranted) {
+            ActivityCompat.requestPermissions(this.requireActivity(), new String[]{permission}, 1);
         }
     }
 
@@ -89,13 +89,13 @@ public class CountingTabFragment extends Fragment implements SensorEventListener
     private void changeCountStatus(Boolean status) {
         this.isCounting = status;
         if (this.isCounting) {
-            Toast.makeText(requireContext(), "Started counting", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this.requireContext(), "Started counting", Toast.LENGTH_SHORT).show();
             Log.d("Vukm", "Started counting");
             this.toggleButtonView.setText(R.string.StopCountingButtonLabel);
             this.stepCount = 0;
             this.sensorManager.registerListener(this, this.stepCounterSensor, SensorManager.SENSOR_DELAY_FASTEST);
         } else {
-            Toast.makeText(requireContext(), "Stopped counting", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this.requireContext(), "Stopped counting", Toast.LENGTH_SHORT).show();
             Log.d("Vukm", "Stopped counting");
             this.toggleButtonView.setText(R.string.StartCountingButtonLabel);
             this.sensorManager.unregisterListener(this);
@@ -105,12 +105,12 @@ public class CountingTabFragment extends Fragment implements SensorEventListener
     @Override
     public void onSensorChanged(SensorEvent event) {
         if (this.isCounting && event.sensor.getType() == Sensor.TYPE_STEP_COUNTER) {
-            int latestCount =  (int) event.values[0];
+            int latestCount = (int) event.values[0];
             if (this.initialStepCount < 0) {
                 this.initialStepCount = latestCount + 1;
             }
-            this.stepCount = latestCount - initialStepCount;
-            this.stepCountView.setText(String.valueOf(stepCount));
+            this.stepCount = latestCount - this.initialStepCount;
+            this.stepCountView.setText(String.valueOf(this.stepCount));
         }
     }
 
@@ -120,7 +120,7 @@ public class CountingTabFragment extends Fragment implements SensorEventListener
             return;
         }
         String message = "Step Counter accuracy changed: " + accuracy;
-        Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
+        Toast.makeText(this.getContext(), message, Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -132,7 +132,7 @@ public class CountingTabFragment extends Fragment implements SensorEventListener
     @Override
     public void onResume() {
         super.onResume();
-        this.sensorManager.registerListener(this, stepCounterSensor, SensorManager.SENSOR_DELAY_FASTEST);
+        this.sensorManager.registerListener(this, this.stepCounterSensor, SensorManager.SENSOR_DELAY_FASTEST);
     }
 
     @Override
