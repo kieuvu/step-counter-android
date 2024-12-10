@@ -3,6 +3,7 @@ package com.vukm.StepCounter.ui.counting;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -32,6 +33,10 @@ import com.vukm.StepCounter.R;
 
 import org.jetbrains.annotations.Contract;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
 public class CountingTabFragment extends Fragment implements SensorEventListener, LocationListener {
     private SensorManager stepCounterSensorManager;
     private Sensor stepCounterSensor;
@@ -46,6 +51,7 @@ public class CountingTabFragment extends Fragment implements SensorEventListener
     private boolean isCounting = false;
     private int initialStepCount = -1;
 
+    private SharedPreferences sharedPreferences;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -123,14 +129,91 @@ public class CountingTabFragment extends Fragment implements SensorEventListener
     @Override
     public void onSensorChanged(SensorEvent event) {
         if (this.isCounting && event.sensor.getType() == Sensor.TYPE_STEP_COUNTER) {
+            String today = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
+            String lastRecordedDate = sharedPreferences.getString("lastRecordedDate", "");
+
+            if (!today.equals(lastRecordedDate)) {
+                this.resetDailySteps(today);
+            }
+
             int latestCount = (int) event.values[0];
             if (this.initialStepCount < 0) {
                 this.initialStepCount = latestCount;
             }
+
             int stepCount = latestCount - this.initialStepCount;
             this.stepCountTextView.setText(String.valueOf(stepCount));
+
+            sharedPreferences.edit()
+                    .putInt("dailySteps", stepCount)
+                    .apply();
         }
     }
+
+    private void resetDailySteps(String today) {
+        String lastRecordedDate = sharedPreferences.getString("lastRecordedDate", "");
+        int lastDaySteps = sharedPreferences.getInt("dailySteps", 0);
+        if (!lastRecordedDate.isEmpty()) {
+            saveToDatabase(lastRecordedDate, lastDaySteps);
+        }
+
+        this.initialStepCount = -1;
+        sharedPreferences.edit()
+                .putString("lastRecordedDate", today)
+                .putInt("dailySteps", 0)
+                .apply();
+    }
+
+    private void saveToDatabase(String date, int steps) {
+        String storedData = sharedPreferences.getString("stepHistory", "");
+
+        StringBuilder updatedData = new StringBuilder();
+        boolean updated = false;
+
+        if (!storedData.isEmpty()) {
+            String[] entries = storedData.split(",");
+            for (String entry : entries) {
+                String[] parts = entry.split(":");
+                if (parts[0].equals(date)) {
+                    updatedData.append(date).append(":").append(steps).append(",");
+                    updated = true;
+                } else {
+                    updatedData.append(entry).append(",");
+                }
+            }
+        }
+
+        if (!updated) {
+            updatedData.append(date).append(":").append(steps).append(",");
+        }
+
+        sharedPreferences.edit()
+                .putString("stepHistory", updatedData.toString().replaceAll(",$", ""))
+                .apply();
+    }
+
+//    private void displayStepHistory() {
+//        // Retrieve step history from SharedPreferences
+//        String storedData = sharedPreferences.getString("stepHistory", "");
+//
+//        StringBuilder report = new StringBuilder("Step Summary:\n");
+//
+//        if (!storedData.isEmpty()) {
+//            String[] entries = storedData.split(",");
+//            for (String entry : entries) {
+//                String[] parts = entry.split(":");
+//                if (parts.length == 2) {
+//                    String date = parts[0];
+//                    String steps = parts[1];
+//                    report.append(date).append(": ").append(steps).append(" steps\n");
+//                }
+//            }
+//        }
+//
+//        // Display the report in a TextView
+//        TextView reportTextView = findViewById(R.id.reportTextView);
+//        reportTextView.setText(report.toString());
+//    }
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
@@ -188,11 +271,14 @@ public class CountingTabFragment extends Fragment implements SensorEventListener
     }
 
     @Override
-    public void onStatusChanged(String provider, int status, Bundle extras) {}
+    public void onStatusChanged(String provider, int status, Bundle extras) {
+    }
 
     @Override
-    public void onProviderEnabled(@NonNull String provider) {}
+    public void onProviderEnabled(@NonNull String provider) {
+    }
 
     @Override
-    public void onProviderDisabled(@NonNull String provider) {}
+    public void onProviderDisabled(@NonNull String provider) {
+    }
 }
