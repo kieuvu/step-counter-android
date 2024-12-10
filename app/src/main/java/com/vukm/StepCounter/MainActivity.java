@@ -2,7 +2,6 @@ package com.vukm.StepCounter;
 
 import android.os.Bundle;
 import android.view.MenuItem;
-import android.view.Window;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -25,10 +24,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
-
-        Window window = this.getWindow();
-        window.setStatusBarColor(this.getResources().getColor(R.color.black, this.getTheme()));
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
 
         setContentView(R.layout.activity_main);
 
@@ -54,7 +50,8 @@ public class MainActivity extends AppCompatActivity {
     private void showFragment(Fragment fragment) {
         if (fragment == this.activeFragment) {
             return;
-        } ;
+        }
+        ;
 
         this.getSupportFragmentManager().beginTransaction()
                 .hide(this.activeFragment)
