@@ -51,7 +51,6 @@ public class MainActivity extends AppCompatActivity {
         if (fragment == this.activeFragment) {
             return;
         }
-        ;
 
         this.getSupportFragmentManager().beginTransaction()
                 .hide(this.activeFragment)

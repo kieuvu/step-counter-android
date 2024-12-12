@@ -42,7 +42,6 @@ public class CountingTabFragment extends Fragment implements SensorEventListener
     private Sensor stepCounterSensor;
 
     private LocationManager locationManager;
-    private Location lastLocation = null;
 
     private TextView stepCountTextView;
     private Button startStopButtonView;
@@ -52,10 +51,24 @@ public class CountingTabFragment extends Fragment implements SensorEventListener
     private int initialStepCount = -1;
 
     private SharedPreferences sharedPreferences;
+    private static final long MIN_TIME_BW_UPDATES = 1000; // 1 second
+    private static final float MIN_DISTANCE_CHANGE_FOR_UPDATES = 1; // 5 meters
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_counting_tab, container, false);
+    }
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        Context context = getContext();
+        if (context != null) {
+            sharedPreferences = context.getSharedPreferences("MyPrefs", Context.MODE_PRIVATE);
+        } else {
+            Log.e("CountingTabFragment", "Context is null when initializing SharedPreferences");
+        }
     }
 
     @SuppressLint("SetTextI18n")
@@ -95,11 +108,7 @@ public class CountingTabFragment extends Fragment implements SensorEventListener
             return;
         }
 
-        String[] permissions = {
-                Manifest.permission.ACTIVITY_RECOGNITION,
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACTIVITY_RECOGNITION
-        };
+        String[] permissions = {Manifest.permission.ACTIVITY_RECOGNITION, Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACTIVITY_RECOGNITION};
 
         for (String permission : permissions) {
             if (ContextCompat.checkSelfPermission(this.getContext(), permission) != PackageManager.PERMISSION_GRANTED) {
@@ -128,6 +137,8 @@ public class CountingTabFragment extends Fragment implements SensorEventListener
 
     @Override
     public void onSensorChanged(SensorEvent event) {
+        Toast.makeText(requireContext(), "OnStepSensorChange", Toast.LENGTH_SHORT).show();
+
         if (this.isCounting && event.sensor.getType() == Sensor.TYPE_STEP_COUNTER) {
             String today = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
             String lastRecordedDate = sharedPreferences.getString("lastRecordedDate", "");
@@ -144,9 +155,7 @@ public class CountingTabFragment extends Fragment implements SensorEventListener
             int stepCount = latestCount - this.initialStepCount;
             this.stepCountTextView.setText(String.valueOf(stepCount));
 
-            sharedPreferences.edit()
-                    .putInt("dailySteps", stepCount)
-                    .apply();
+            sharedPreferences.edit().putInt("dailySteps", stepCount).apply();
         }
     }
 
@@ -158,10 +167,7 @@ public class CountingTabFragment extends Fragment implements SensorEventListener
         }
 
         this.initialStepCount = -1;
-        sharedPreferences.edit()
-                .putString("lastRecordedDate", today)
-                .putInt("dailySteps", 0)
-                .apply();
+        sharedPreferences.edit().putString("lastRecordedDate", today).putInt("dailySteps", 0).apply();
     }
 
     private void saveToDatabase(String date, int steps) {
@@ -187,41 +193,14 @@ public class CountingTabFragment extends Fragment implements SensorEventListener
             updatedData.append(date).append(":").append(steps).append(",");
         }
 
-        sharedPreferences.edit()
-                .putString("stepHistory", updatedData.toString().replaceAll(",$", ""))
-                .apply();
+        sharedPreferences.edit().putString("stepHistory", updatedData.toString().replaceAll(",$", "")).apply();
     }
-
-//    private void displayStepHistory() {
-//        // Retrieve step history from SharedPreferences
-//        String storedData = sharedPreferences.getString("stepHistory", "");
-//
-//        StringBuilder report = new StringBuilder("Step Summary:\n");
-//
-//        if (!storedData.isEmpty()) {
-//            String[] entries = storedData.split(",");
-//            for (String entry : entries) {
-//                String[] parts = entry.split(":");
-//                if (parts.length == 2) {
-//                    String date = parts[0];
-//                    String steps = parts[1];
-//                    report.append(date).append(": ").append(steps).append(" steps\n");
-//                }
-//            }
-//        }
-//
-//        // Display the report in a TextView
-//        TextView reportTextView = findViewById(R.id.reportTextView);
-//        reportTextView.setText(report.toString());
-//    }
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
         if (sensor.getType() != Sensor.TYPE_STEP_COUNTER) {
             return;
         }
-        String message = "Step Counter accuracy changed: " + accuracy;
-        Toast.makeText(this.getContext(), message, Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -247,10 +226,25 @@ public class CountingTabFragment extends Fragment implements SensorEventListener
     }
 
     private void startLocationUpdates() {
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 2000, 0, this);
-        } else {
-            Toast.makeText(this.requireContext(), "Location permission not granted", Toast.LENGTH_SHORT).show();
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(requireContext(), "Location permission not granted", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                Toast.makeText(requireContext(), "GPS is disabled", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, MIN_TIME_BW_UPDATES, MIN_DISTANCE_CHANGE_FOR_UPDATES, this);
+
+            Location lastKnownLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+            if (lastKnownLocation != null) {
+                this.updateSpeed(lastKnownLocation);
+            }
+        } catch (SecurityException e) {
+            Toast.makeText(requireContext(), "security exception", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -263,11 +257,21 @@ public class CountingTabFragment extends Fragment implements SensorEventListener
     @SuppressLint("DefaultLocale")
     @Override
     public void onLocationChanged(@NonNull Location location) {
-        if (lastLocation != null) {
-            float speed = location.getSpeed() * 3.6f;
-            this.speedTextView.setText(String.format("%.2f km/h", speed));
+        try {
+            this.updateSpeed(location);
+        } catch (Exception e) {
+            Log.e("CountingTabFragment", "Error in location update", e);
+            this.speedTextView.setText("N/A");
         }
-        this.lastLocation = location;
+    }
+
+    private void updateSpeed(Location location) {
+        try {
+            float speedKmh = location.getSpeed() * 3.6f;
+            this.speedTextView.setText(String.format("%.2f km/h", speedKmh));
+        } catch (Exception e) {
+            this.speedTextView.setText("N/A");
+        }
     }
 
     @Override
@@ -280,5 +284,9 @@ public class CountingTabFragment extends Fragment implements SensorEventListener
 
     @Override
     public void onProviderDisabled(@NonNull String provider) {
+        if (LocationManager.GPS_PROVIDER.equals(provider)) {
+            Toast.makeText(requireContext(), "GPS disabled", Toast.LENGTH_SHORT).show();
+            speedTextView.setText("GPS Off");
+        }
     }
 }
