@@ -3,9 +3,9 @@
     <item
         android:id="@+id/nav_tracking"
         android:icon="@drawable/ic_nav_tracking"
-        android:title="Tracking" />
+        android:title="Theo dõi" />
     <item
         android:id="@+id/nav_summary"
         android:icon="@drawable/ic_nav_summary"
-        android:title="Summary" />
+        android:title="Thống kê" />
 </menu>

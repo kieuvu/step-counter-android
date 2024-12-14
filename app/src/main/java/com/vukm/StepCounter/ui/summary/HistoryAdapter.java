@@ -1,5 +1,6 @@
 package com.vukm.StepCounter.ui.summary;
 
+import android.annotation.SuppressLint;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -27,13 +28,14 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
         return new ViewHolder(view);
     }
 
+    @SuppressLint("SetTextI18n")
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         String date = (String) stepHistory.keySet().toArray()[position];
         int steps = stepHistory.get(date);
 
         holder.tvDate.setText(date);
-        holder.tvStepCount.setText(String.valueOf(steps));
+        holder.tvStepCount.setText(String.valueOf(steps)  + " bước");
     }
 
     @Override

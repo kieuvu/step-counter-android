@@ -16,7 +16,11 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.vukm.StepCounter.R;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.HashMap;
+import java.util.Iterator;
 
 public class SummaryTabFragment extends Fragment {
     private SharedPreferences sharedPreferences;
@@ -52,29 +56,27 @@ public class SummaryTabFragment extends Fragment {
     }
 
     private void getHistories() {
-        Log.i("SummaryTabFragment", "Getting histories");
         if (sharedPreferences == null) {
-            Log.e("SummaryTabFragment", "SharedPreferences is null");
             return;
         }
 
-        String storedData = sharedPreferences.getString("stepHistory", "");
-
-        if (storedData.isEmpty()) {
-            Log.e("SummaryTabFragment", "SharedPreferences empty");
+        String stepHistory = sharedPreferences.getString("stepHistories", "");
+        if (stepHistory.isEmpty()){
             return;
         }
-        for (String entry : storedData.split(",")) {
-            String[] parts = entry.split(":");
-            if (parts.length != 2) {
-                System.out.println("Invalid entry: " + entry);
-                continue;
+
+        try {
+            JSONObject stepHistoryJson = new JSONObject(stepHistory);
+            Iterator<String> keys = stepHistoryJson.keys();
+
+            while (keys.hasNext()) {
+                String date = keys.next();
+                int steps = stepHistoryJson.getInt(date);
+                stepCountByDate.put(date, steps);
             }
-            try {
-                stepCountByDate.put(parts[0], Integer.parseInt(parts[1]));
-            } catch (NumberFormatException e) {
-                e.printStackTrace();
-            }
+        } catch (JSONException e) {
+            Log.e("CountingTabFragment", "Error parsing JSON", e);
+            return;
         }
     }
 }

@@ -32,6 +32,8 @@ import androidx.fragment.app.Fragment;
 import com.vukm.StepCounter.R;
 
 import org.jetbrains.annotations.Contract;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -140,13 +142,6 @@ public class CountingTabFragment extends Fragment implements SensorEventListener
         Toast.makeText(requireContext(), "OnStepSensorChange", Toast.LENGTH_SHORT).show();
 
         if (this.isCounting && event.sensor.getType() == Sensor.TYPE_STEP_COUNTER) {
-            String today = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
-            String lastRecordedDate = sharedPreferences.getString("lastRecordedDate", "");
-
-            if (!today.equals(lastRecordedDate)) {
-                this.resetDailySteps(today);
-            }
-
             int latestCount = (int) event.values[0];
             if (this.initialStepCount < 0) {
                 this.initialStepCount = latestCount;
@@ -155,45 +150,44 @@ public class CountingTabFragment extends Fragment implements SensorEventListener
             int stepCount = latestCount - this.initialStepCount;
             this.stepCountTextView.setText(String.valueOf(stepCount));
 
-            sharedPreferences.edit().putInt("dailySteps", stepCount).apply();
+            this.storeStep(stepCount);
         }
     }
 
-    private void resetDailySteps(String today) {
-        String lastRecordedDate = sharedPreferences.getString("lastRecordedDate", "");
-        int lastDaySteps = sharedPreferences.getInt("dailySteps", 0);
-        if (!lastRecordedDate.isEmpty()) {
-            saveToDatabase(lastRecordedDate, lastDaySteps);
+    private void storeStep(int stepCount) {
+        if (this.sharedPreferences == null) {
+            Log.e("CountingTabFragment", "SharedPreferences is null");
+            return;
         }
 
-        this.initialStepCount = -1;
-        sharedPreferences.edit().putString("lastRecordedDate", today).putInt("dailySteps", 0).apply();
-    }
-
-    private void saveToDatabase(String date, int steps) {
-        String storedData = sharedPreferences.getString("stepHistory", "");
-
-        StringBuilder updatedData = new StringBuilder();
-        boolean updated = false;
+        String storedData = this.sharedPreferences.getString("stepHistories", "");
+        JSONObject stepHistory = new JSONObject();
 
         if (!storedData.isEmpty()) {
-            String[] entries = storedData.split(",");
-            for (String entry : entries) {
-                String[] parts = entry.split(":");
-                if (parts[0].equals(date)) {
-                    updatedData.append(date).append(":").append(steps).append(",");
-                    updated = true;
-                } else {
-                    updatedData.append(entry).append(",");
-                }
+            try {
+                // Attempt to parse stored data as JSON
+                stepHistory = new JSONObject(storedData);
+            } catch (JSONException e) {
+                Log.e("CountingTabFragment", "Stored data is not valid JSON. Resetting step history.", e);
+                // Reset stepHistory to avoid errors
+                stepHistory = new JSONObject();
             }
         }
 
-        if (!updated) {
-            updatedData.append(date).append(":").append(steps).append(",");
+        String date = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
+        try {
+            if (stepHistory.has(date)) {
+                int currentStepCount = stepHistory.getInt(date);
+                stepHistory.put(date, currentStepCount + stepCount);
+            } else {
+                stepHistory.put(date, stepCount);
+            }
+        } catch (JSONException e) {
+            Log.e("CountingTabFragment", "Error adding step count to JSON", e);
+            return;
         }
 
-        sharedPreferences.edit().putString("stepHistory", updatedData.toString().replaceAll(",$", "")).apply();
+        this.sharedPreferences.edit().putString("stepHistories", stepHistory.toString()).apply();
     }
 
     @Override
